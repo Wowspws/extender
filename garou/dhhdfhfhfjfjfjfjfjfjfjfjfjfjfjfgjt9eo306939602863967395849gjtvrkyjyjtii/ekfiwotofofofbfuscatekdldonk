@@ -1,0 +1,87 @@
+        local StarterGui = game:GetService("StarterGui")
+
+        -- Helper function to send notifications
+        local function sendNotification(title, text)
+            StarterGui:SetCore("SendNotification", {
+                Title = title;
+                Text = text;
+                Duration = 5; -- Notification duration (in seconds)
+            })
+        end
+
+        -- Function to unload the script
+        local function unloadScript()
+            if animationConnection then
+                animationConnection:Disconnect()
+                animationConnection = nil
+            end
+            if deathConnection then
+                deathConnection:Disconnect()
+                deathConnection = nil
+            end
+            print("Unloaded Auto Extender")
+            sendNotification("Auto Extender", "Script has been unloaded.")
+            isRunning = false
+        end
+
+        if isRunning then
+            -- Unload the script
+            unloadScript()
+        else
+            -- Run the script
+            print("Auto Extender enabled")
+            local Players = game:GetService("Players")
+            local player = Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+
+            -- Table of valid animation IDs
+            local validAnimationIds = {
+                ["rbxassetid://12309835105"] = 0.5, -- Animation ID with normal wait time
+                ["rbxassetid://14057231976"] = 1,  -- Animation ID with different wait time
+                ["rbxassetid://14705929107"] = 1.8,  -- Animation ID with different wait time
+            }
+
+            -- Function to teleport the player 100 studs up, back to ground, and 100 studs forward
+            local function teleportUpGroundAndForward()
+                local rootPart = character:FindFirstChild("HumanoidRootPart")
+                if rootPart then
+                    -- Get the player's forward direction
+                    local forwardDirection = rootPart.CFrame.LookVector
+
+                    -- Store the original CFrame (ground position)
+                    local originalCFrame = rootPart.CFrame
+
+                    -- Teleport 100 studs up
+                    rootPart.CFrame = rootPart.CFrame + Vector3.new(0, 125, 0)
+
+                    -- Wait for 0.5 seconds
+                    wait(0.5)
+
+                    -- Teleport back to the original ground position
+                    rootPart.CFrame = originalCFrame
+
+                    -- Teleport 100 studs forward from the ground position
+                    rootPart.CFrame = rootPart.CFrame + forwardDirection * 125
+                end
+            end
+
+            -- Monitor animations and teleport the player when a valid animation plays
+            animationConnection = humanoid.AnimationPlayed:Connect(function(animationTrack)
+                local animationId = animationTrack.Animation.AnimationId
+                if validAnimationIds[animationId] then
+                    local waitTime = validAnimationIds[animationId] -- Get the corresponding wait time
+                    wait(waitTime) -- Wait for the animation-specific timing
+                    teleportUpGroundAndForward() -- Teleport the player up, to ground, and forward
+                end
+            end)
+
+            -- Unload the script when the player dies
+            deathConnection = humanoid.Died:Connect(function()
+                unloadScript()
+            end)
+
+            -- Send notification that the script is running
+            sendNotification("Auto Extender", "Script is now active.")
+            isRunning = true
+        end
